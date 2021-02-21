@@ -1,7 +1,8 @@
 const chai = require('chai')
-let NaturalBreaksManager = require('../app/utils/naturalBreaksManager')
+const path = require('path')
+const NaturalBreaksManager = require('../app/utils/naturalBreaksManager')
 const Settings = require('./../app/utils/settings')
-const testSettingsLocaction = `${__dirname}/test-settings.json`
+const testSettingsLocaction = path.join(__dirname, '/test-settings.json')
 
 chai.should()
 
@@ -16,6 +17,7 @@ describe('naturalBreaksManager', function () {
 
   it('should be running with default settings', () => {
     naturalBreaksManager.isOnNaturalBreak.should.be.equal(false)
+    naturalBreaksManager.isSchedulerCleared.should.be.equal(false)
     naturalBreaksManager.usingNaturalBreaks.should.be.equal(true)
   })
 
@@ -25,6 +27,7 @@ describe('naturalBreaksManager', function () {
     naturalBreaksManager = null
     naturalBreaksManager = new NaturalBreaksManager(settings)
     naturalBreaksManager.isOnNaturalBreak.should.be.equal(false)
+    naturalBreaksManager.isSchedulerCleared.should.be.equal(false)
     naturalBreaksManager.usingNaturalBreaks.should.be.equal(false)
   })
 
@@ -34,6 +37,7 @@ describe('naturalBreaksManager', function () {
     naturalBreaksManager = null
     naturalBreaksManager = new NaturalBreaksManager(settings)
     naturalBreaksManager.isOnNaturalBreak.should.be.equal(false)
+    naturalBreaksManager.isSchedulerCleared.should.be.equal(false)
     naturalBreaksManager.usingNaturalBreaks.should.be.equal(true)
   })
 
@@ -41,12 +45,14 @@ describe('naturalBreaksManager', function () {
     naturalBreaksManager.stop()
     naturalBreaksManager.start()
     naturalBreaksManager.isOnNaturalBreak.should.be.equal(false)
+    naturalBreaksManager.isSchedulerCleared.should.be.equal(false)
     naturalBreaksManager.usingNaturalBreaks.should.be.equal(true)
   })
 
   it('should stop when stop()', () => {
     naturalBreaksManager.stop()
     naturalBreaksManager.usingNaturalBreaks.should.be.equal(false)
+    naturalBreaksManager.isSchedulerCleared.should.be.equal(false)
     naturalBreaksManager.isOnNaturalBreak.should.be.equal(false)
     naturalBreaksManager.idleTime.should.be.equal(0)
   })

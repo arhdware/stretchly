@@ -1,5 +1,6 @@
 const fs = require('fs')
 const defaultSettings = require('./defaultSettings')
+const log = require('electron-log')
 
 class Settings {
   constructor (configLocation) {
@@ -9,25 +10,42 @@ class Settings {
 
     if (fs.existsSync(this.settingsFile)) {
       this._load()
+      log.info('Stretchly: loading settings')
       if (Object.keys(this.data).length !== Object.keys(defaultSettings).length) {
         this._loadMissing()
       }
     } else {
-      this.data = defaultSettings
+      this.data = Object.assign({}, defaultSettings)
       this._save(true)
+      log.info('Stretchly: creating settings file')
     }
   }
 
   get (key) {
     if (typeof this.data[key] === 'undefined' || this.data[key] === null) {
       this.set(key, defaultSettings[key])
+      log.info(`Stretchly: setting default value for ${key}`)
     }
     return this.data[key]
   }
 
   set (key, value) {
     this.data[key] = value
+    log.info(`Stretchly: setting ${key} to ${value}`)
     this._save()
+  }
+
+  restoreDefaults () {
+    this.data = Object.assign({}, defaultSettings)
+    this.data.isFirstRun = false
+    this._save(true)
+    log.info('Stretchly: restoring default settings')
+  }
+
+  restoreRemote (remoteSettings) {
+    this.data = Object.assign({}, remoteSettings)
+    this._save(true)
+    log.info('Stretchly: restoring remote settings')
   }
 
   _load (retryCount = 5) {
@@ -36,16 +54,17 @@ class Settings {
     } catch (e) {
       if (retryCount > 0) {
         setTimeout(this._load.bind(this, retryCount - 1), 10)
-        console.log('Failed to load settings JSON file, retrying in 10 milliseconds')
+        log.warn('Stretchly: failed to load settings JSON file, retrying in 10 milliseconds')
         return
       }
-      this.data = defaultSettings
-      console.log('Failed to load settings JSON file, giving up and resetting')
+      this.data = Object.assign({}, defaultSettings)
+      // TODO maybe I should `this._save(true)` here?
+      log.warn('Stretchly: failed to load settings JSON file, giving up and resetting')
     }
   }
 
   _loadMissing () {
-    for (let prop in defaultSettings) {
+    for (const prop in defaultSettings) {
       this.get(prop)
     }
   }
@@ -67,6 +86,7 @@ class Settings {
       if (this.saving) clearTimeout(this.saving)
       this.saving = setTimeout(this._save.bind(this), 275)
     }
+    log.info('Stretchly: saving settings file')
     this.lastSync = now
   }
 

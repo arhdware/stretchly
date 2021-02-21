@@ -1,4 +1,5 @@
 const EventEmitter = require('events')
+const log = require('electron-log')
 
 class NaturalBreaksManager extends EventEmitter {
   constructor (settings) {
@@ -7,6 +8,7 @@ class NaturalBreaksManager extends EventEmitter {
     this.usingNaturalBreaks = settings.get('naturalBreaks')
     this.timer = null
     this.isOnNaturalBreak = false
+    this.isSchedulerCleared = false
     if (this.usingNaturalBreaks) {
       this.start()
     }
@@ -15,18 +17,21 @@ class NaturalBreaksManager extends EventEmitter {
   start () {
     this.usingNaturalBreaks = true
     this._checkIdleTime()
+    log.info('Stretchly: starting Idle time monitoring')
   }
 
   stop () {
     this.usingNaturalBreaks = false
     this.isOnNaturalBreak = false
+    this.isSchedulerCleared = false
     clearTimeout(this.timer)
     this.timer = null
+    log.info('Stretchly: stopping Idle time monitoring')
   }
 
   get idleTime () {
     if (this.usingNaturalBreaks) {
-      return require('@paulcbetts/system-idle-time').getIdleTime()
+      return require('electron').powerMonitor.getSystemIdleTime() * 1000
     } else {
       return 0
     }
@@ -35,17 +40,19 @@ class NaturalBreaksManager extends EventEmitter {
   _checkIdleTime () {
     let lastIdleTime = 0
     this.timer = setInterval(() => {
-      let idleTime = this.idleTime
+      const idleTime = this.idleTime
       if (!this.isOnNaturalBreak && idleTime > 20000) {
         this.isOnNaturalBreak = true
       }
       if (this.isOnNaturalBreak && idleTime < 20000) {
         this.isOnNaturalBreak = false
-        if (lastIdleTime > this.settings.get('breakDuration')) {
-          this.emit('naturalBreakFinished', idleTime)
+        if (lastIdleTime > this.settings.get('naturalBreaksInactivityResetTime')) {
+          this.isSchedulerCleared = false
+          this.emit('naturalBreakFinished')
         }
       }
-      if (this.isOnNaturalBreak && idleTime > this.settings.get('breakDuration')) {
+      if (this.isOnNaturalBreak && idleTime > this.settings.get('naturalBreaksInactivityResetTime')) {
+        this.isSchedulerCleared = true
         this.emit('clearBreakScheduler')
       }
       lastIdleTime = idleTime

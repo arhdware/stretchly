@@ -1,46 +1,89 @@
-const i18next = require('i18next')
+const semver = require('semver')
 
-let formatRemaining = function (seconds) {
+// TODO if I am not wrong, formatting function are mathematically the same
+// Would be nice to not have the same code
+const formatTimeRemaining = function (milliseconds, i18next = require('i18next')) {
+  const seconds = Math.ceil(milliseconds / 1000.0)
+  const minutes = Math.ceil(seconds / 60.0)
+  const hours = Math.ceil(minutes / 60.0)
+
   if (seconds < 60) {
-    return i18next.t('utils.secondsLeft', {count: seconds + 1})
-  } else {
-    return i18next.t('utils.minutesLeft', {count: Math.trunc((seconds / 60) + 1)})
+    return i18next.t('utils.secondsRemaining', { seconds: seconds })
   }
-}
 
-let formatTillBreak = function (milliseconds) {
-  let minutes = Math.round(milliseconds / 60000)
-  if (minutes < 1) {
-    let seconds = Math.round((milliseconds % 60000) / 5000) * 5
-    return i18next.t('utils.s', {seconds: seconds})
-  } else {
-    return i18next.t('utils.m', {minutes: minutes})
+  if (seconds >= 60 && minutes < 60) {
+    if (seconds === 60) {
+      return i18next.t('utils.aboutMinutesRemaining', { minutes: 2 })
+    }
+    return i18next.t('utils.aboutMinutesRemaining', { minutes: minutes })
   }
-}
 
-let formatPauseTimeLeft = function (milliseconds) {
-  let timeString = ''
-  let hours = Math.floor(milliseconds / (1000 * 3600))
-  let remainder = (milliseconds - hours * 1000 * 3600)
-  let minutes = Math.floor(remainder / 60000)
   if (minutes >= 60) {
-    minutes -= 60
-    hours += 1
+    if (minutes % 60 === 0) {
+      return i18next.t('utils.aboutHoursRemaining', { hours: hours })
+    }
+    return i18next.t('utils.aboutHoursMinutesRemaining',
+      { minutes: minutes - (hours - 1) * 60, hours: hours - 1 })
   }
-  if (hours >= 1) {
-    timeString += i18next.t('utils.h', {hours: hours})
+  return 'Unknown time remaining'
+}
+
+const formatTimeIn = function (milliseconds, i18next = require('i18next')) {
+  const seconds = Math.ceil(milliseconds / 1000.0)
+  const minutes = Math.ceil(seconds / 60.0)
+  const hours = Math.ceil(minutes / 60.0)
+
+  if (seconds < 60) {
+    return i18next.t('utils.inSeconds', { seconds: seconds })
   }
-  if (minutes >= 1) {
-    timeString += i18next.t('utils.m', {minutes: minutes})
+
+  if (seconds >= 60 && minutes < 60) {
+    if (seconds === 60) {
+      return i18next.t('utils.inAboutMinutes', { minutes: 2 })
+    }
+    return i18next.t('utils.inAboutMinutes', { minutes: minutes })
   }
-  if (minutes < 1 && hours < 1) {
-    timeString = `${i18next.t('utils.lessThan1m')}`
+
+  if (minutes >= 60) {
+    if (minutes % 60 === 0) {
+      return i18next.t('utils.inAboutHours', { hours: hours })
+    } else {
+      return i18next.t('utils.inAboutHoursMinutes',
+        { minutes: minutes - (hours - 1) * 60, hours: hours - 1 })
+    }
   }
-  return timeString
+  return 'in unknown time'
+}
+
+// does not consider `postponesLimit`
+function canPostpone (postpone, passedPercent, postponePercent) {
+  return postpone && passedPercent <= postponePercent
+}
+
+// does not consider `postponesLimit`
+function canSkip (strictMode, postpone, passedPercent, postponePercent) {
+  return !((postpone && passedPercent <= postponePercent) || strictMode)
+}
+
+function formatKeyboardShortcut (keyboardShortcut) {
+  return keyboardShortcut.replace('Or', '/').replace('+', ' + ')
+}
+
+function shouldShowNotificationTitle (platform, systemVersion) {
+  if (platform === 'win32' && semver.gte(semver.coerce(systemVersion), '10.0.19042')) {
+    return false
+  }
+  if (platform === 'darwin' && semver.gte(semver.coerce(systemVersion), '10.16.0')) {
+    return false
+  }
+  return true
 }
 
 module.exports = {
-  formatRemaining,
-  formatTillBreak,
-  formatPauseTimeLeft
+  formatTimeRemaining,
+  formatTimeIn,
+  canPostpone,
+  canSkip,
+  formatKeyboardShortcut,
+  shouldShowNotificationTitle
 }
